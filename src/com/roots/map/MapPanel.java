@@ -242,7 +242,9 @@ public class MapPanel extends JPanel {
     private SearchPanel searchPanel;
     private Rectangle magnifyRegion;
     
-    private GpxTrack gpxtrack = null;
+    public GpxTrack gpxtrack = null;
+    public TrackPointMarker trackpointmarker = new TrackPointMarker ();
+    public int tpidx = -1;
 
     public MapPanel() {
         this(new Point(4382783, 2608966), 15);
@@ -252,7 +254,7 @@ public class MapPanel extends JPanel {
         
         try {
             // disable animation on windows7 for now
-            useAnimations = !("Windows Vista".equals(System.getProperty("os.name")) && "6.1".equals(System.getProperty("os.version")));
+            useAnimations = false; // !("Windows Vista".equals(System.getProperty("os.name")) && "6.1".equals(System.getProperty("os.version")));
         } catch (Exception e) {
             // be defensive here
             log.log(Level.INFO, "failed to check for win7", e);
@@ -263,6 +265,7 @@ public class MapPanel extends JPanel {
         setBackground(new Color(0xc0, 0xc0, 0xc0));
         add(overlayPanel);
         add(controlPanel);
+        add(trackpointmarker);
         addMouseListener(mouseListener);
         addMouseMotionListener(mouseListener);
         addMouseWheelListener(mouseListener);
@@ -689,9 +692,16 @@ public class MapPanel extends JPanel {
             		Stroke oldstroke = g.getStroke();
             		g.setStroke(new BasicStroke (4.0f));
             		g.setColor(new Color (0, 0, 196, 128));
+                    g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
     				g.drawPolyline(xPoints, yPoints, nPoints);
             		g.setStroke(oldstroke);
-    			} catch (DataConversionException e) {
+            		
+            		if (trackpointmarker.idx >= 0)
+            		{
+                		trackpointmarker.setBounds(getMapPosition(), getZoom());
+            		}
+
+            	} catch (DataConversionException e) {
     				// TODO Auto-generated catch block
     				e.printStackTrace();
     			}
@@ -817,7 +827,7 @@ public class MapPanel extends JPanel {
         Graphics2D g2d = (Graphics2D) image.getGraphics();
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2d.setColor(background);
-        g2d.fillOval(0, 0, WIDTH - 1, HEIGHT - 1);
+        g2d.fillOval(0, 0, WIDTH-1, HEIGHT-1);
 
         double hx = 4;
         double hy = 4;
@@ -839,7 +849,7 @@ public class MapPanel extends JPanel {
            }
         }
         g2d.setColor(Color.gray);
-        g2d.drawOval(0, 0, WIDTH - 1, HEIGHT - 1);
+        g2d.drawOval(0, 0, WIDTH-1, HEIGHT-1);
         return image;
     }
 
@@ -1178,8 +1188,17 @@ public class MapPanel extends JPanel {
         }
 
         public void mouseClicked(MouseEvent e) {
-            if (e.getButton() == MouseEvent.BUTTON1 && e.getClickCount() >= 2) {
-                zoomInAnimated(new Point(mouseCoords.x, mouseCoords.y));
+        	int tpidx;
+            if (e.getButton() == MouseEvent.BUTTON1)
+            {
+            	if (e.getClickCount() >= 2) {
+                    zoomInAnimated(new Point(mouseCoords.x, mouseCoords.y));
+            	}
+            	else if ((gpxtrack != null) && ((tpidx=gpxtrack.detectTrackPointHit(getCursorPosition(),getZoom()))>=0))
+            	{
+            		trackpointmarker.setTrackPoint (gpxtrack, tpidx);
+            		repaint ();
+            	}	
             } else if (e.getButton() == MouseEvent.BUTTON3 && e.getClickCount() >= 2) {
                 zoomOutAnimated(new Point(mouseCoords.x, mouseCoords.y));
             } else if (e.getButton() == MouseEvent.BUTTON2) {
@@ -1230,6 +1249,14 @@ public class MapPanel extends JPanel {
             mouseCoords = e.getPoint();
             if (overlayPanel.isVisible())
                 MapPanel.this.overlayPanel.repaint();
+            
+            int idx = -1;
+            if ((gpxtrack != null) && ((idx=gpxtrack.detectTrackPointHit(getCursorPosition(),getZoom())) != tpidx))
+            {
+            	MapPanel.this.setToolTipText(idx >= 0 ? gpxtrack.trackpoint[idx].time : null);
+            	tpidx = idx;
+            }
+
         }
 
         private void handleDrag(MouseEvent e) {
@@ -1846,7 +1873,7 @@ public class MapPanel extends JPanel {
 	                    		frame.setTitle("GPX Trackviewer - [" + selectedFile.getAbsolutePath() + "]");
 	                    		
 	                    		getMapPanel().gpxtrack = new GpxTrack(selectedFile.getPath());
-	                    		int z = getMapPanel().gpxtrack.calcZoom(1000);
+	                    		int z = getMapPanel().gpxtrack.calcZoom(2000);
 	                    		Point c = getMapPanel().gpxtrack.getCenter(z);
 	                            getMapPanel().setZoom(z);
 	                            getMapPanel().setCenterPosition(c);
@@ -1889,7 +1916,7 @@ public class MapPanel extends JPanel {
                     }
 
                 });
-                animations.setSelected(true);
+                animations.setSelected(mapPanel.useAnimations);
                 viewMenu.add(animations);
                 viewMenu.addSeparator();
                 viewMenu.add(new JCheckBoxMenuItem(new AbstractAction() {

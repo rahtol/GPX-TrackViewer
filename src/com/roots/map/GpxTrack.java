@@ -13,12 +13,19 @@ import org.jdom2.xpath.XPathExpression;
 import org.jdom2.xpath.XPathFactory;
 
 
+/**
+ * @author bec
+ *
+ */
 public class GpxTrack {
 	
     private static XPathFactory xFactory = XPathFactory.instance();
     private static XPathExpression<Element> expr1 = xFactory.compile("//*[name()='trkpt']", Filters.element());
     
     List<Element> trkptlist;
+    TrackPoint trackpoint [];
+    
+    final int DIST_THRESHOLD = 4;
     
     // bounding box
     double xMin = Integer.MAX_VALUE;
@@ -33,11 +40,19 @@ public class GpxTrack {
         Element root = jdomDocument.getRootElement();
  //       List<Element> trks = root.getChildren();
         trkptlist = expr1.evaluate(root);
-        
+        trackpoint = new TrackPoint [trkptlist.size()];
+
+        int i = 0;
         for (Element trkpt : trkptlist)
         {
-			double lon = trkpt.getAttribute("lon").getDoubleValue();
 			double lat = trkpt.getAttribute("lat").getDoubleValue();
+			double lon = trkpt.getAttribute("lon").getDoubleValue();
+			String time = trkpt.getChildTextNormalize("time", trkpt.getNamespace());
+			double elevation = Double.valueOf(trkpt.getChildTextNormalize("ele", trkpt.getNamespace()));
+			Element extensions = trkpt.getChild("extensions", trkpt.getNamespace());
+			Element distance = extensions.getChild("distance");
+			double distFromStart = 0; //Double.valueOf(distance.getTextNormalize());
+			trackpoint [i++] = new TrackPoint (lat, lon, time, distFromStart, elevation);
 			
 			if (lon < xMin)	{ xMin = lon; }
 			if (lon > xMax)	{ xMax = lon; }
@@ -116,6 +131,32 @@ public class GpxTrack {
 		int x = (ixMin + ixMax) / 2;
 		int y = (iyMin + iyMax) / 2;
 		return new Point(x,y);
+	}
+	
+	/**
+	 * @param p 	a Point in map coordinates with respect to current zoom level
+	 * @return 		index of TrackPoint with minimum distance to p if this distance is less than DIST_THRESHOLD
+	 * 		   		or -1 if no TrackPoint exists with distance less than DIST_THRESHOLD to p
+	 */
+	public int detectTrackPointHit (Point p, int z)
+	{
+		int idx = -1;
+		int minDistSquare = DIST_THRESHOLD * DIST_THRESHOLD;
+		
+		for(int i=0; i < trackpoint.length; i++)
+		{
+			int ix = MapPanel.lon2position(trackpoint[i].lon, z);
+			int iy = MapPanel.lat2position(trackpoint[i].lat, z);
+			int distsquare = ((ix - p.x) * (ix - p.x)) + ((iy - p.y) * (iy - p.y));
+
+			if (distsquare < minDistSquare)
+			{
+				idx = i;
+				minDistSquare = distsquare;
+			}
+		}
+		
+		return idx;
 	}
 	
 }
