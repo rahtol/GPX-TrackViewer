@@ -56,6 +56,7 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -244,7 +245,7 @@ public class MapPanel extends JPanel {
     
     public GpxTrack gpxtrack = null;
     public TrackPointMarker trackpointmarker = new TrackPointMarker ();
-    public int tpidx = -1;
+    public List<Integer> tpidx = new ArrayList<Integer>();
 
     public MapPanel() {
         this(new Point(4382783, 2608966), 15);
@@ -849,7 +850,7 @@ public class MapPanel extends JPanel {
            }
         }
         g2d.setColor(Color.gray);
-        g2d.drawOval(0, 0, WIDTH-1, HEIGHT-1);
+        g2d.drawOval(0, 0, WIDTH-1, HEIGHT-1); // The oval covers an area that is width + 1 pixels wide and height + 1 pixels tall.
         return image;
     }
 
@@ -1188,15 +1189,15 @@ public class MapPanel extends JPanel {
         }
 
         public void mouseClicked(MouseEvent e) {
-        	int tpidx;
+        	List<Integer> tpidx;
             if (e.getButton() == MouseEvent.BUTTON1)
             {
             	if (e.getClickCount() >= 2) {
                     zoomInAnimated(new Point(mouseCoords.x, mouseCoords.y));
             	}
-            	else if ((gpxtrack != null) && ((tpidx=gpxtrack.detectTrackPointHit(getCursorPosition(),getZoom()))>=0))
+            	else if ((gpxtrack != null) && !((tpidx=gpxtrack.detectTrackPointHit(getCursorPosition(),getZoom())).isEmpty()))
             	{
-            		trackpointmarker.setTrackPoint (gpxtrack, tpidx);
+            		trackpointmarker.setTrackPoint (gpxtrack, tpidx.get(0));
             		repaint ();
             	}	
             } else if (e.getButton() == MouseEvent.BUTTON3 && e.getClickCount() >= 2) {
@@ -1250,10 +1251,10 @@ public class MapPanel extends JPanel {
             if (overlayPanel.isVisible())
                 MapPanel.this.overlayPanel.repaint();
             
-            int idx = -1;
-            if ((gpxtrack != null) && ((idx=gpxtrack.detectTrackPointHit(getCursorPosition(),getZoom())) != tpidx))
+            List<Integer> idx;
+            if ((gpxtrack != null) && !((idx=gpxtrack.detectTrackPointHit(getCursorPosition(),getZoom())).equals(tpidx)))
             {
-            	MapPanel.this.setToolTipText(idx >= 0 ? gpxtrack.trackpoint[idx].time : null);
+            	MapPanel.this.setToolTipText(idx.isEmpty() ? null : gpxtrack.gettoolTiptext(idx));
             	tpidx = idx;
             }
 

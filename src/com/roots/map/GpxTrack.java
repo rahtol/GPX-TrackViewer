@@ -1,6 +1,9 @@
 package com.roots.map;
 import java.awt.Point;
 import java.io.IOException;
+import java.time.Duration;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.jdom2.DataConversionException;
@@ -27,40 +30,50 @@ public class GpxTrack {
     
     final int DIST_THRESHOLD = 4;
     
-    // bounding box
+    /**
+     * Bounding box of GPX-Track in WGS84 coordinates. Here: x coordinate of top left edge
+     */
     double xMin = Integer.MAX_VALUE;
+    
+    /**
+     * Bounding box of GPX-Track in WGS84 coordinates. Here: x coordinate of bottom right edge
+     */
     double xMax = Integer.MIN_VALUE;
+    
+    /**
+     * Bounding box of GPX-Track in WGS84 coordinates. Here: y coordinate of bottom right edge
+     */
     double yMin = Integer.MAX_VALUE;
+    
+    /**
+     * Bounding box of GPX-Track in WGS84 coordinates. Here: y coordinate of top left edge
+     */
     double yMax = Integer.MIN_VALUE;
     
+	/**
+	 * Create a GpxTrack object from given filename. The specified file must be readable and a valid GPX file, i.e. conform to the Topografx XML schema for GPX.
+	 * @param xmlSource			Filename of .gpx file to read
+	 * @throws JDOMException
+	 * @throws IOException
+	 */
 	public GpxTrack (String xmlSource) throws JDOMException, IOException
 	{
         SAXBuilder jdomBuilder = new SAXBuilder();
         Document jdomDocument = jdomBuilder.build(xmlSource);
         Element root = jdomDocument.getRootElement();
- //       List<Element> trks = root.getChildren();
         trkptlist = expr1.evaluate(root);
         trackpoint = new TrackPoint [trkptlist.size()];
 
         int i = 0;
         for (Element trkpt : trkptlist)
         {
-			double lat = trkpt.getAttribute("lat").getDoubleValue();
-			double lon = trkpt.getAttribute("lon").getDoubleValue();
-			String time = trkpt.getChildTextNormalize("time", trkpt.getNamespace());
-			double elevation = Double.valueOf(trkpt.getChildTextNormalize("ele", trkpt.getNamespace()));
-			Element extensions = trkpt.getChild("extensions", trkpt.getNamespace());
-			Element distance = extensions.getChild("distance");
-			double distFromStart = 0; //Double.valueOf(distance.getTextNormalize());
-			trackpoint [i++] = new TrackPoint (lat, lon, time, distFromStart, elevation);
+			TrackPoint trackpt = new TrackPoint (trkpt);
+			trackpoint [i++] = trackpt; 
 			
-			if (lon < xMin)	{ xMin = lon; }
-			if (lon > xMax)	{ xMax = lon; }
-			if (lat < yMin)	{ yMin = lat; }
-			if (lat > yMax)	{ yMax = lat; }
-			
-//        	System.out.println("lat=" + trkpt.getAttributeValue("lat") + "  lon=" + trkpt.getAttributeValue("lon"));
-			
+			if (trackpt.lon < xMin)	{ xMin = trackpt.lon; }
+			if (trackpt.lon > xMax)	{ xMax = trackpt.lon; }
+			if (trackpt.lat < yMin)	{ yMin = trackpt.lat; }
+			if (trackpt.lat > yMax)	{ yMax = trackpt.lat; }
         }
 
         System.out.println("xMin=" + xMin + "  xMax=" + xMax + "  yMin=" + yMin + "  yMax=" + yMax);
@@ -138,25 +151,60 @@ public class GpxTrack {
 	 * @return 		index of TrackPoint with minimum distance to p if this distance is less than DIST_THRESHOLD
 	 * 		   		or -1 if no TrackPoint exists with distance less than DIST_THRESHOLD to p
 	 */
-	public int detectTrackPointHit (Point p, int z)
+	public List<Integer> detectTrackPointHit (Point p, int z)
 	{
-		int idx = -1;
-		int minDistSquare = DIST_THRESHOLD * DIST_THRESHOLD;
+		List<Integer> result = new ArrayList<Integer>();
+		int distthresholdsquared = DIST_THRESHOLD * DIST_THRESHOLD;
+		int mindistsquared = distthresholdsquared;
+		boolean inside = false;
 		
 		for(int i=0; i < trackpoint.length; i++)
 		{
 			int ix = MapPanel.lon2position(trackpoint[i].lon, z);
 			int iy = MapPanel.lat2position(trackpoint[i].lat, z);
-			int distsquare = ((ix - p.x) * (ix - p.x)) + ((iy - p.y) * (iy - p.y));
-
-			if (distsquare < minDistSquare)
+			int distsquared = ((ix - p.x) * (ix - p.x)) + ((iy - p.y) * (iy - p.y));
+			
+			if ((distsquared < distthresholdsquared) && (!inside))
 			{
-				idx = i;
-				minDistSquare = distsquare;
+				// found a new trackpoint to be recorded
+				result.add(i);
+				mindistsquared = distsquared;
+				inside = true;
+			}
+
+			if ((distsquared >= distthresholdsquared) && (inside))
+			{
+				// leave section of the track that was close to the target thereby finalizing a TrackPoint on the list
+				mindistsquared = distthresholdsquared;
+				inside = false;
+			}
+
+			if (distsquared < mindistsquared)
+			{
+				// optimize an already recorded trackpoint
+				result.set(result.size()-1, i);
+				mindistsquared = distsquared;
 			}
 		}
 		
-		return idx;
+		return result;
+	}
+	
+	public String gettoolTiptext (List<Integer> listofidx)
+	{
+		String tooltip = "<html>";
+		String separator = "";
+		
+		for(int idx : listofidx)
+		{
+			Duration dt = Duration.between(trackpoint[0].datetime, trackpoint[idx].datetime);
+			LocalTime t = LocalTime.MIN.plus(dt);
+			tooltip += String.format("%s%s<br>t[%d]=%02d:%02d:%02d", separator, trackpoint[idx].timestr, idx, t.getHour(), t.getMinute(), t.getSecond());
+			separator = "<br>------------<br>";
+		}
+		
+		tooltip += "</html>";
+		return 	tooltip;
 	}
 	
 }
