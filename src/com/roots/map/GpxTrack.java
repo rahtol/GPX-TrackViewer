@@ -12,6 +12,7 @@ import org.jdom2.Element;
 import org.jdom2.JDOMException;
 import org.jdom2.filter.Filters;
 import org.jdom2.input.SAXBuilder;
+import org.jdom2.input.sax.XMLReaders;
 import org.jdom2.xpath.XPathExpression;
 import org.jdom2.xpath.XPathFactory;
 
@@ -58,7 +59,7 @@ public class GpxTrack {
 	 */
 	public GpxTrack (String xmlSource) throws JDOMException, IOException
 	{
-        SAXBuilder jdomBuilder = new SAXBuilder();
+        SAXBuilder jdomBuilder = new SAXBuilder(XMLReaders.XSDVALIDATING);
         Document jdomDocument = jdomBuilder.build(xmlSource);
         Element root = jdomDocument.getRootElement();
         trkptlist = expr1.evaluate(root);
@@ -68,6 +69,11 @@ public class GpxTrack {
         for (Element trkpt : trkptlist)
         {
 			TrackPoint trackpt = new TrackPoint (trkpt);
+			if (i>0)
+			{
+				trackpt.distToPred = ECEF.dist (trackpt.ecef, trackpoint[i-1].ecef);
+				trackpt.distFromStart = trackpoint[i-1].distFromStart + trackpt.distToPred;
+			}
 			trackpoint [i++] = trackpt; 
 			
 			if (trackpt.lon < xMin)	{ xMin = trackpt.lon; }
@@ -199,7 +205,7 @@ public class GpxTrack {
 		{
 			Duration dt = Duration.between(trackpoint[0].datetime, trackpoint[idx].datetime);
 			LocalTime t = LocalTime.MIN.plus(dt);
-			tooltip += String.format("%s%s<br>t[%d]=%02d:%02d:%02d", separator, trackpoint[idx].timestr, idx, t.getHour(), t.getMinute(), t.getSecond());
+			tooltip += String.format("%s%s<br>t[%d]=%02d:%02d:%02d<br>s[%d]=%f", separator, trackpoint[idx].timestr, idx, t.getHour(), t.getMinute(), t.getSecond(), idx, trackpoint[idx].distFromStart);
 			separator = "<br>------------<br>";
 		}
 		

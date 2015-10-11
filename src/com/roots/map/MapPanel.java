@@ -1873,6 +1873,8 @@ public class MapPanel extends JPanel {
 	                    		JFrame frame = (JFrame) SwingUtilities.getRoot(getMapPanel());
 	                    		frame.setTitle("GPX Trackviewer - [" + selectedFile.getAbsolutePath() + "]");
 	                    		
+	                    		getMapPanel().trackpointmarker.setVisible(false);
+
 	                    		getMapPanel().gpxtrack = new GpxTrack(selectedFile.getPath());
 	                    		int z = getMapPanel().gpxtrack.calcZoom(2000);
 	                    		Point c = getMapPanel().gpxtrack.getCenter(z);
@@ -1883,7 +1885,15 @@ public class MapPanel extends JPanel {
                     		catch (Exception exception)
                     		{
                     			exception.printStackTrace();
-                    		}
+
+	                    		JFrame frame = (JFrame) SwingUtilities.getRoot(getMapPanel());
+	                    		frame.setTitle("GPX Trackviewer - no track selected");
+
+	                    		getMapPanel().trackpointmarker.setVisible(false);
+	                    		
+	                    		getMapPanel().gpxtrack = null;
+	                            repaint();
+}
                    	}                    	
                     }
                 });

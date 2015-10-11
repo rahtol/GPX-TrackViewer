@@ -19,8 +19,10 @@ public class TrackPoint {
 	public double lon;
 	public String timestr;
 	public Instant datetime;
-	public double distFromStart;
 	public double elevation;
+	public ECEF ecef;
+	public double distToPred = 0.0;
+	public double distFromStart = 0.0;
 
 	public TrackPoint (Element trkpt) throws JDOMException
 	{
@@ -28,6 +30,7 @@ public class TrackPoint {
 		
 		this.lat = this.trkpt.getAttribute("lat").getDoubleValue();
 		this.lon = this.trkpt.getAttribute("lon").getDoubleValue();
+		ecef = ECEF.fromWGS84(lat, lon);
 		
 		timestr = this.trkpt.getChildTextNormalize("time", trkpt.getNamespace());
 		datetime = Instant.parse(timestr);
