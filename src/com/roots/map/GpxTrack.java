@@ -205,8 +205,10 @@ public class GpxTrack {
 		{
 			Duration dt = Duration.between(trackpoint[0].datetime, trackpoint[idx].datetime);
 			LocalTime t = LocalTime.MIN.plus(dt);
-			tooltip += String.format("%s%s<br>t[%d]=%02d:%02d:%02d<br>s[%d]=%f", separator, trackpoint[idx].timestr, idx, t.getHour(), t.getMinute(), t.getSecond(), idx, trackpoint[idx].distFromStart);
-			separator = "<br>------------<br>";
+//			tooltip += String.format("%s%s<br>t[%d]=%02d:%02d:%02d<br>s[%d]=%f", separator, trackpoint[idx].timestr, idx, t.getHour(), t.getMinute(), t.getSecond(), idx, trackpoint[idx].distFromStart);
+//			separator = "<br>------------<br>";
+			tooltip += String.format("%s%.2f km<br>%02d:%02d:%02d", separator, trackpoint[idx].distFromStart/1000.0, t.getHour(), t.getMinute(), t.getSecond());
+			separator = "<br>";
 		}
 		
 		tooltip += "</html>";
