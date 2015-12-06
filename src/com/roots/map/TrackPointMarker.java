@@ -5,6 +5,8 @@ import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
@@ -73,7 +75,9 @@ public class TrackPointMarker extends JButton {
 	{
 		this.idx = idx;
 		this.gpxtrack = gpxtrack;
-//		setToolTipText(gpxtrack.trackpoint[idx].time);
+		List<Integer> l = new ArrayList<Integer>();
+		l.add(idx);
+		setToolTipText(gpxtrack.gettoolTiptext((l)));
 		setVisible(true);
 	}
 	
